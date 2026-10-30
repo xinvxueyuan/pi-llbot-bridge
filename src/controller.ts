@@ -190,7 +190,11 @@ export class BridgeController {
         cache.prune();
       }
 
-      const transcript = await filterTranscript(withForwards, request, { config: config.context.filter, complete });
+      const transcript = await filterTranscript(withForwards, request, {
+        config: config.context.filter,
+        complete,
+        log: (message) => context.ui.notify(message, "warning"),
+      });
       return { transcript, attachments };
     };
 

@@ -15,7 +15,7 @@ const m = (id: string, text: string, ts = 1_700_000_000): StoredMessage => ({
   attachments: [],
 });
 
-const config = { enabled: true, maxInputChars: 500, maxOutputChars: 200, timeoutMs: 50 };
+const config = { enabled: true, maxInputChars: 500, maxOutputChars: 200, timeoutMs: 50, minKeepRatio: 0 };
 
 describe("filterTranscript（R11）", () => {
   it("启用且有模型时用模型输出", async () => {
@@ -37,6 +37,15 @@ describe("filterTranscript（R11）", () => {
 
   it("模型返回空串时退回确定性结果", async () => {
     const out = await filterTranscript([m("1", "保留这条")], "问", { config, complete: async () => "   " });
+    expect(out).toContain("保留这条");
+  });
+
+  it("模型过度压缩（低于 minKeepRatio）时退回完整上下文", async () => {
+    const complete = vi.fn(async (_prompt: string) => "12:00 张三: 保留这条");
+    const messages = [m("1", "第一句"), m("2", "第二句"), m("3", "第三句"), m("4", "保留这条")];
+    const out = await filterTranscript(messages, "问", { config: { ...config, minKeepRatio: 0.6 }, complete });
+    expect(out).toContain("第一句");
+    expect(out).toContain("第三句");
     expect(out).toContain("保留这条");
   });
 

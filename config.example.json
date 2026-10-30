@@ -14,9 +14,10 @@
     "maxMessages": 80,
     "filter": {
       "enabled": true,
-      "maxInputChars": 8000,
-      "maxOutputChars": 2000,
-      "timeoutMs": 30000
+      "maxInputChars": 16000,
+      "maxOutputChars": 6000,
+      "timeoutMs": 30000,
+      "minKeepRatio": 0.6
     }
   },
   "media": {

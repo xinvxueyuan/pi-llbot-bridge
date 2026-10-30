@@ -6,6 +6,8 @@ export interface FilterConfig {
   maxInputChars: number;
   maxOutputChars: number;
   timeoutMs: number;
+  /** 模型输出少于原文这个比例时，判为「过度压缩」，退回完整上下文（0..1） */
+  minKeepRatio: number;
 }
 
 export interface ContextConfig {
@@ -76,7 +78,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
     quotedBefore: 10,
     quotedAfter: 5,
     maxMessages: 80,
-    filter: { enabled: true, maxInputChars: 8000, maxOutputChars: 2000, timeoutMs: 30_000 },
+    filter: { enabled: true, maxInputChars: 16_000, maxOutputChars: 6000, timeoutMs: 30_000, minKeepRatio: 0.6 },
   },
   media: {
     enabled: true,

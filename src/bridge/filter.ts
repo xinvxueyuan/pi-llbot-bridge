@@ -4,12 +4,14 @@ import type { FilterConfig } from "../config";
 export interface FilterDeps {
   config: FilterConfig;
   complete?: (prompt: string) => Promise<string>;
+  log?: (message: string) => void;
 }
 
 const SYSTEM_PROMPT =
-  "你是 QQ 群聊记录筛选器。给定一段群聊记录与用户本次请求，删掉与请求无关的噪声" +
-  "（刷屏、表情包/图片/文件占位、无意义寒暄、重复内容），保留理解请求所必需的消息。" +
-  "输出格式：每行一条，形如 `HH:MM 昵称: 内容`；不要解释、不要总结成段、不要编造原文没有的内容。";
+  "你是 QQ 群聊记录筛选器。给定一段群聊记录与用户本次请求，只删掉**明确无关**的噪声" +
+  "（纯刷屏、连续重复、单独占位的表情包/图片/文件行），其余一律保留——包括寒暄、上下文、别人的插话。" +
+  "拿不准就保留。**保留原始行**（形如 `HH:MM 昵称: 内容`），不要改写、不要概括、不要只留与请求直接相关的行。" +
+  "不要解释，不要编造原文没有的内容。";
 
 function clock(ts: number): string {
   const date = new Date(ts * 1000);
@@ -55,8 +57,14 @@ export async function filterTranscript(messages: StoredMessage[], request: strin
     const output = await withTimeout(deps.complete(prompt), deps.config.timeoutMs);
     const text = output.trim();
     if (!text) return deterministic;
+    const ratio = deps.config.minKeepRatio ?? 0.6;
+    if (text.length < input.length * ratio) {
+      deps.log?.(`筛选结果过短（${text.length}/${input.length} 字符），已退回完整上下文`);
+      return deterministic;
+    }
     return clamp(text, deps.config.maxOutputChars);
-  } catch {
+  } catch (error) {
+    deps.log?.(`筛选请求失败，使用完整上下文：${(error as Error).message}`);
     return deterministic;
   }
 }

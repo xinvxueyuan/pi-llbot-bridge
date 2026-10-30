@@ -23,7 +23,7 @@ describe("loadConfig", () => {
       quotedBefore: 10,
       quotedAfter: 5,
       maxMessages: 80,
-      filter: { enabled: true, maxInputChars: 8000, maxOutputChars: 2000, timeoutMs: 30000 },
+      filter: { enabled: true, maxInputChars: 16000, maxOutputChars: 6000, timeoutMs: 30000, minKeepRatio: 0.6 },
     });
     expect(cfg.media).toMatchObject({
       enabled: true,
@@ -67,7 +67,7 @@ describe("loadConfig", () => {
     );
     expect(cfg.context.recent).toBe(30);
     expect(cfg.context.quotedBefore).toBe(10);
-    expect(cfg.context.filter).toEqual({ enabled: false, maxInputChars: 8000, maxOutputChars: 2000, timeoutMs: 30000 });
+    expect(cfg.context.filter).toEqual({ enabled: false, maxInputChars: 16000, maxOutputChars: 6000, timeoutMs: 30000, minKeepRatio: 0.6 });
     expect(cfg.media.ttlHours).toBe(1);
     expect(cfg.media.maxTotalBytes).toBe(536870912);
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "9", ping: "14" });
