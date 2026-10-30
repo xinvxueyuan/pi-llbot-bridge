@@ -1,0 +1,26 @@
+{
+  "server": { "host": "127.0.0.1", "port": 3001, "path": "/onebot/v11/ws", "accessToken": "换成你自己的 token" },
+  "command": "/pi",
+  "context": {
+    "recent": 20,
+    "quotedBefore": 10,
+    "quotedAfter": 5,
+    "maxMessages": 80,
+    "filter": { "enabled": true, "maxInputChars": 8000, "maxOutputChars": 2000, "timeoutMs": 30000 }
+  },
+  "media": {
+    "enabled": true,
+    "dir": "",
+    "downloadImages": true,
+    "downloadFiles": true,
+    "maxFileBytes": 20971520,
+    "ttlHours": 72,
+    "maxTotalBytes": 536870912,
+    "downloadTimeoutMs": 20000,
+    "attachImages": 3
+  },
+  "replyTimeoutMs": 600000,
+  "reactions": { "resolving": "38", "done": "148", "fail": "10060" },
+  "store": { "path": "", "keepPerGroup": 500 },
+  "groups": { "allow": [] }
+}
