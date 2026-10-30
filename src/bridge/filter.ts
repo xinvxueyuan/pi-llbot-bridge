@@ -47,10 +47,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 export async function filterTranscript(messages: StoredMessage[], request: string, deps: FilterDeps): Promise<string> {
-  const deterministic = clamp(renderTranscript(messages), deps.config.maxOutputChars);
+  const full = renderTranscript(messages);
+  const deterministic = clamp(full, deps.config.maxOutputChars);
   if (!deps.config.enabled || !deps.complete) return deterministic;
 
-  const input = clamp(renderTranscript(messages), deps.config.maxInputChars);
+  // 上下文本来就不长就别让模型改写了：筛选零收益，只有丢信息的风险
+  if (full.length <= deps.config.maxOutputChars) return deterministic;
+
+  const input = clamp(full, deps.config.maxInputChars);
   const prompt = `${SYSTEM_PROMPT}\n\n[本次请求]\n${request}\n\n[群聊记录]\n${input}\n\n只输出筛选后的行：`;
 
   try {
@@ -58,8 +62,10 @@ export async function filterTranscript(messages: StoredMessage[], request: strin
     const text = output.trim();
     if (!text) return deterministic;
     const ratio = deps.config.minKeepRatio ?? 0.6;
-    if (text.length < input.length * ratio) {
-      deps.log?.(`筛选结果过短（${text.length}/${input.length} 字符），已退回完整上下文`);
+    const inputLines = input.split("\n").filter((line) => line.trim()).length;
+    const keptLines = text.split("\n").filter((line) => line.trim()).length;
+    if (keptLines < Math.ceil(inputLines * ratio)) {
+      deps.log?.(`筛选丢行过多（${keptLines}/${inputLines} 行），已退回完整上下文`);
       return deterministic;
     }
     return clamp(text, deps.config.maxOutputChars);

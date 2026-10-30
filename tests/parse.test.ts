@@ -61,6 +61,22 @@ describe("parse", () => {
     expect(extractCommand(segmentsOf(groupEvent()), "999", "/pi")).toEqual({ text: "你好pi-agent", replyTo: null });
   });
 
+  it("正文里的 @ 保留（不被吞掉）", () => {
+    const hit = extractCommand(
+      [at("999"), text(" /pi 分析一下"), at("3545287902"), text(" 发的log")],
+      "999",
+      "/pi",
+    );
+    expect(hit?.text).toBe("分析一下@3545287902 发的log");
+  });
+
+  it("只剥掉开头指向机器人的 @，不影响别的 @", () => {
+    const hit = extractCommand([at("999"), text(" /pi hi")], "999", "/pi", { requireMention: false });
+    expect(hit?.text).toBe("hi");
+    // 开头 @ 别人（不是机器人）时不算命令
+    expect(extractCommand([at("888"), text(" /pi hi")], "999", "/pi", { requireMention: false })).toBeNull();
+  });
+
   it("extractCommand 拒绝前缀误匹配 /pizza", () => {
     expect(extractCommand([at("999"), text(" /pizza")], "999", "/pi")).toBeNull();
   });

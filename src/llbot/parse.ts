@@ -142,8 +142,10 @@ export function extractCommand(
 ): CommandHit | null {
   const requireMention = options.requireMention ?? true;
   if (requireMention && !mentions(segments, selfId)) return null;
-  const joined = segments.filter((s) => s.type === "text").map((s) => String(s.data?.text ?? "")).join("");
-  const trimmed = joined.replace(/^[\s\u3000]+/, "");
+  // 用完整渲染（含 @QQ / 图片占位），只剥掉开头那个指向机器人自己的 @，正文里的 @ 必须保留
+  const rendered = renderText(segments);
+  const botTag = `@${selfId}`;
+  const trimmed = (rendered.startsWith(botTag) ? rendered.slice(botTag.length) : rendered).replace(/^[\s\u3000]+/, "");
   const escaped = command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = new RegExp(`^${escaped}(\\s|$)`).exec(trimmed);
   if (!match) return null;
