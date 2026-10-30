@@ -1,5 +1,8 @@
 # pi-llbot-bridge
 
+[![npm](https://img.shields.io/npm/v/pi-llbot-bridge)](https://www.npmjs.com/package/pi-llbot-bridge)
+[![license](https://img.shields.io/npm/l/pi-llbot-bridge)](LICENSE)
+
 把本机 LLBot（OneBot 11，**反向 WebSocket**）的 QQ 群聊桥进当前 pi 会话的 pi 扩展。
 
 ## 安装与配置
