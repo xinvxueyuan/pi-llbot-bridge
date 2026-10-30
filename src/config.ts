@@ -33,6 +33,8 @@ export interface TriggerConfig {
   allowSelf: boolean;
   /** 允许触发的主人 QQ 号；空数组 = 只要是 allowSelf 就放行 */
   owners: string[];
+  /** 是否必须 @ 机器人才能触发；false（默认）= 消息以命令词开头即可 */
+  requireMention: boolean;
 }
 
 export interface BridgeConfig {
@@ -72,7 +74,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   reactions: { resolving: "38", done: "148", fail: "10060" },
   store: { path: "", keepPerGroup: 500 },
   groups: { allow: [] },
-  trigger: { allowSelf: false, owners: [] },
+  trigger: { allowSelf: false, owners: [], requireMention: false },
 };
 
 export function configPath(agentDir: string): string {
@@ -112,6 +114,7 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
   if (env.PI_LLBOT_MEDIA_TTL_HOURS) merged.media.ttlHours = Number(env.PI_LLBOT_MEDIA_TTL_HOURS);
   if (env.PI_LLBOT_ATTACH_IMAGES) merged.media.attachImages = Number(env.PI_LLBOT_ATTACH_IMAGES);
   if (env.PI_LLBOT_ALLOW_SELF) merged.trigger.allowSelf = env.PI_LLBOT_ALLOW_SELF !== "off";
+  if (env.PI_LLBOT_REQUIRE_MENTION) merged.trigger.requireMention = env.PI_LLBOT_REQUIRE_MENTION !== "off";
   if (env.PI_LLBOT_OWNERS) {
     merged.trigger.owners = env.PI_LLBOT_OWNERS.split(",").map((v) => v.trim()).filter(Boolean);
   }

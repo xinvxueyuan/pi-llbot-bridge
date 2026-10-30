@@ -65,6 +65,16 @@ describe("parse", () => {
     expect(extractCommand([at("999"), text(" /pizza")], "999", "/pi")).toBeNull();
   });
 
+  it("requireMention=false 时无需 @ 即可命中", () => {
+    expect(extractCommand([text("/pi 你好")], "999", "/pi", { requireMention: false })).toEqual({ text: "你好", replyTo: null });
+    expect(extractCommand([text(" /pizza")], "999", "/pi", { requireMention: false })).toBeNull();
+  });
+
+  it("requireMention=true（默认）时无 @ 不命中", () => {
+    expect(extractCommand([text("/pi 你好")], "999", "/pi")).toBeNull();
+    expect(extractCommand([text("/pi 你好")], "999", "/pi", { requireMention: true })).toBeNull();
+  });
+
   it("extractCommand 空正文返回 null", () => {
     expect(extractCommand([at("999"), text(" /pi   ")], "999", "/pi")).toBeNull();
   });

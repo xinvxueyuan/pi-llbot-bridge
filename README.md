@@ -5,10 +5,12 @@
 ## 安装与配置
 
 ```bash
-pi install ./          # 或开发期：pi -e ./src/index.ts
+pi install npm:pi-llbot-bridge     # 从 npm 安装（也可以 pi install ./ 装本地源码）
 mkdir -p ~/.pi/agent/llbot-bridge
 cp config.example.json ~/.pi/agent/llbot-bridge/config.json
 ```
+
+开发期直接跑源码：`pi -e ./src/index.ts`。
 
 配置写在 `~/.pi/agent/llbot-bridge/config.json`（模板见 `config.example.json`）。环境变量可覆盖：
 
@@ -56,6 +58,18 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 5. 把「筛选后的上下文 + 本地附件路径 + 请求」注入会话；
 6. pi 调 `qq_reply` 引用回复到群里，表态变 148；异常/超时表态 10060。
 
+## 触发方式
+
+`trigger.requireMention` 控制是否必须 @ 机器人（**默认 `false`**：消息以命令词开头就触发）：
+
+```json
+"trigger": { "requireMention": false, "allowSelf": true, "owners": ["1330509996"] }
+```
+
+- `requireMention: false`（默认）：`/pi 你好` 就能触发，不要求 @。
+- `requireMention: true`：必须 `@机器人 /pi 你好`。
+- 命令词由 `command` 决定（默认 `/pi`），且要求 `^/pi(\s|$)`，`/pizza` 不会误命中。
+
 ## 主人号自己发命令（自我触发）
 
 默认桥只处理**别人**发来的消息；如果 bot 号就是你的主号、你要自己 @ 自己下命令，需要三件事：
@@ -82,3 +96,7 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 - 单飞：同一时刻只处理一条 QQ 请求，忙碌时回提示。
 - 只在群聊生效；私聊不处理。
 - 不转码、不 OCR；文件内容由 pi 自己按路径读取。
+
+## License
+
+MIT © 2026 新v学员 (xinvxueyuan)

@@ -1,8 +1,10 @@
 {
   "name": "pi-llbot-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Bridge a locally hosted LLBot (OneBot 11, reverse WebSocket) into a running Pi session",
   "type": "module",
+  "license": "MIT",
+  "author": "xinvxueyuan <xinvxueyuan@yeah.net>",
   "keywords": [
     "pi-package"
   ],
@@ -10,6 +12,26 @@
     "extensions": [
       "./src/index.ts"
     ]
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "config.example.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xinvxueyuan/pi-llbot-bridge.git"
+  },
+  "homepage": "https://github.com/xinvxueyuan/pi-llbot-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/xinvxueyuan/pi-llbot-bridge/issues"
   },
   "dependencies": {
     "ws": "^8.22.0"

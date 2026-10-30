@@ -130,8 +130,14 @@ export interface CommandHit {
   replyTo: string | null;
 }
 
-export function extractCommand(segments: ObSegment[], selfId: string, command: string): CommandHit | null {
-  if (!mentions(segments, selfId)) return null;
+export function extractCommand(
+  segments: ObSegment[],
+  selfId: string,
+  command: string,
+  options: { requireMention?: boolean } = {},
+): CommandHit | null {
+  const requireMention = options.requireMention ?? true;
+  if (requireMention && !mentions(segments, selfId)) return null;
   const joined = segments.filter((s) => s.type === "text").map((s) => String(s.data?.text ?? "")).join("");
   const trimmed = joined.replace(/^[\s\u3000]+/, "");
   const escaped = command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

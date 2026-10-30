@@ -35,7 +35,7 @@ describe("loadConfig", () => {
       attachImages: 3,
     });
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060" });
-    expect(cfg.trigger).toEqual({ allowSelf: false, owners: [] });
+    expect(cfg.trigger).toEqual({ allowSelf: false, owners: [], requireMention: false });
   });
 
   it("env 覆盖主人号与自我触发开关", () => {

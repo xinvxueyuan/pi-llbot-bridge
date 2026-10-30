@@ -74,7 +74,9 @@ export class Bridge {
     if (this.sentIds.has(stored.messageId)) return;
     if (!this.groupAllowed(stored.groupId)) return;
 
-    const hit = extractCommand(segmentsOf(event), this.selfId, this.deps.config.command);
+    const hit = extractCommand(segmentsOf(event), this.selfId, this.deps.config.command, {
+      requireMention: this.deps.config.trigger.requireMention,
+    });
     if (!hit) return;
     if (this.seen.has(stored.messageId)) return;
     this.seen.add(stored.messageId);
