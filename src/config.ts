@@ -16,9 +16,19 @@ export interface ContextConfig {
   filter: FilterConfig;
 }
 
+export interface ForwardLongTextConfig {
+  /** 超长答复改为「合并转发聊天记录」发送 */
+  enabled: boolean;
+  /** 超过多少字符触发 */
+  thresholdChars: number;
+  /** 每个节点的最大字符数 */
+  nodeChars: number;
+}
+
 export interface RepliesConfig {
   /** 每轮最多发送几条消息：0=不发，-1=不设上限，其余夹在 0..10 */
   max: number;
+  forwardLongText: ForwardLongTextConfig;
 }
 
 export interface MediaConfig {
@@ -80,7 +90,10 @@ export const DEFAULT_CONFIG: BridgeConfig = {
     downloadTimeoutMs: 20_000,
     attachImages: 3,
   },
-  replies: { max: 3 },
+  replies: {
+    max: 3,
+    forwardLongText: { enabled: true, thresholdChars: 600, nodeChars: 400 },
+  },
   autoStart: true,
   replyTimeoutMs: 600_000,
   reactions: { resolving: "38", done: "148", fail: "10060", ping: "14" },
@@ -113,7 +126,11 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
       filter: { ...DEFAULT_CONFIG.context.filter, ...(fromFile.context?.filter ?? {}) },
     },
     media: { ...DEFAULT_CONFIG.media, ...(fromFile.media ?? {}) },
-    replies: { ...DEFAULT_CONFIG.replies, ...(fromFile.replies ?? {}) },
+    replies: {
+      ...DEFAULT_CONFIG.replies,
+      ...(fromFile.replies ?? {}),
+      forwardLongText: { ...DEFAULT_CONFIG.replies.forwardLongText, ...(fromFile.replies?.forwardLongText ?? {}) },
+    },
     reactions: { ...DEFAULT_CONFIG.reactions, ...(fromFile.reactions ?? {}) },
     store: { ...DEFAULT_CONFIG.store, ...(fromFile.store ?? {}) },
     groups: { ...DEFAULT_CONFIG.groups, ...(fromFile.groups ?? {}) },

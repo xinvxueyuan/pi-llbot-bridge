@@ -17,6 +17,12 @@ describe("collectAttachments（R12）", () => {
     expect(list[3]).toMatchObject({ kind: "record", name: "r.amr" });
   });
 
+  it("合并转发段产生 kind=forward 的附件（fileId 是转发 id）", () => {
+    const list = collectAttachments([{ type: "forward", data: { id: "fwd-123" } }]);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ kind: "forward", fileId: "fwd-123" });
+  });
+
   it("文本/表情/回复段不产生附件", () => {
     expect(
       collectAttachments([

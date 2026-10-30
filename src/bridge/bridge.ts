@@ -5,6 +5,7 @@ import type { BridgeConfig } from "../config";
 import type { MessageStore } from "../store/db";
 import type { ObEvent, StoredMessage } from "../types";
 import { extractCommand, fromApiMessage, segmentsOf, toStored } from "../llbot/parse";
+import { chunkText } from "../llbot/forward";
 import { buildPrompt, type PromptAttachment } from "./prompt";
 
 export interface OneBotLike {
@@ -154,6 +155,22 @@ export class Bridge {
     const turn = this.current;
     if (!turn) return { sent: false, count: 0, reason: "no-turn" };
     if (this.limitReached(turn)) return { sent: false, count: turn.replied, reason: "limit" };
+
+    const forward = this.deps.config.replies.forwardLongText;
+    if (forward?.enabled && text.length > forward.thresholdChars) {
+      const chunks = chunkText(text, forward.nodeChars);
+      const data = await this.deps.client.call<{ message_id?: number | string }>("send_forward_msg", {
+        group_id: Number(turn.groupId),
+        messages: chunks.map((chunk) => ({
+          type: "node",
+          data: { name: this.selfName, uin: Number(this.selfId) || 0, content: chunk },
+        })),
+      });
+      if (data?.message_id !== undefined && data?.message_id !== null) this.sentIds.add(String(data.message_id));
+      turn.replied += 1;
+      return { sent: true, count: turn.replied };
+    }
+
     const data = await this.deps.client.call<{ message_id?: number | string }>("send_group_msg", {
       group_id: Number(turn.groupId),
       message: [

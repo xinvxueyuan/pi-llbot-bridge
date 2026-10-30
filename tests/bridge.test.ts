@@ -201,7 +201,7 @@ describe("Bridge", () => {
   });
 
   it("达到发送上限后不再发送（max=1）", async () => {
-    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1 } } });
+    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1, forwardLongText: { enabled: false, thresholdChars: 600, nodeChars: 400 } } } });
     await bridge.handleEvent(groupMessage());
     expect((await bridge.reply("第一条")).sent).toBe(true);
     const second = await bridge.reply("第二条");
@@ -210,7 +210,7 @@ describe("Bridge", () => {
   });
 
   it("max=-1 时可发多条", async () => {
-    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: -1 } } });
+    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: -1, forwardLongText: { enabled: false, thresholdChars: 600, nodeChars: 400 } } } });
     await bridge.handleEvent(groupMessage());
     expect((await bridge.reply("一")).sent).toBe(true);
     expect((await bridge.reply("二")).sent).toBe(true);
@@ -252,10 +252,56 @@ describe("Bridge", () => {
     const dir = mkdtempSync(join(tmpdir(), "pi-media-"));
     const file = join(dir, "a.png");
     writeFileSync(file, "png-bytes");
-    const { bridge } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1 } } });
+    const { bridge } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1, forwardLongText: { enabled: false, thresholdChars: 600, nodeChars: 400 } } } });
     await bridge.handleEvent(groupMessage());
     expect((await bridge.reply("文字")).sent).toBe(true);
     expect(await bridge.sendMedia({ path: file, kind: "image" })).toMatchObject({ sent: false, reason: "limit" });
+  });
+
+  it("超长答复改为合并转发发送（按 nodeChars 切块）", async () => {
+    const { bridge, calls } = makeBridge({
+      config: {
+        ...DEFAULT_CONFIG,
+        replies: { max: -1, forwardLongText: { enabled: true, thresholdChars: 10, nodeChars: 5 } },
+      },
+    });
+    await bridge.handleEvent(groupMessage());
+    const text = "0123456789abcdefghij";
+    const result = await bridge.reply(text);
+    expect(result).toMatchObject({ sent: true, count: 1 });
+    const call = calls.filter((c) => c.action === "send_forward_msg").pop();
+    expect(call).toBeTruthy();
+    const nodes = call!.params.messages as Array<{ type: string; data: { content: string; name: string; uin: number } }>;
+    expect(nodes.length).toBeGreaterThan(1);
+    expect(nodes.every((node) => node.type === "node" && node.data.content.length <= 5)).toBe(true);
+    expect(nodes.map((node) => node.data.content).join("")).toBe(text);
+    expect(calls.some((c) => c.action === "send_group_msg")).toBe(false);
+  });
+
+  it("未超过阈值仍走普通消息", async () => {
+    const { bridge, calls } = makeBridge({
+      config: {
+        ...DEFAULT_CONFIG,
+        replies: { max: -1, forwardLongText: { enabled: true, thresholdChars: 100, nodeChars: 50 } },
+      },
+    });
+    await bridge.handleEvent(groupMessage());
+    await bridge.reply("短的");
+    expect(calls.some((c) => c.action === "send_group_msg")).toBe(true);
+    expect(calls.some((c) => c.action === "send_forward_msg")).toBe(false);
+  });
+
+  it("关闭 forwardLongText 后长文仍走普通消息", async () => {
+    const { bridge, calls } = makeBridge({
+      config: {
+        ...DEFAULT_CONFIG,
+        replies: { max: -1, forwardLongText: { enabled: false, thresholdChars: 10, nodeChars: 5 } },
+      },
+    });
+    await bridge.handleEvent(groupMessage());
+    await bridge.reply("0123456789abcdefghij");
+    expect(calls.some((c) => c.action === "send_group_msg")).toBe(true);
+    expect(calls.some((c) => c.action === "send_forward_msg")).toBe(false);
   });
 
   it("没调工具时用 lastText 兜底发送并打 done", async () => {

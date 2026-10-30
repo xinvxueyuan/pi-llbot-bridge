@@ -32,7 +32,12 @@
     "allowUpload": true
   },
   "replies": {
-    "max": 3
+    "max": 3,
+    "forwardLongText": {
+      "enabled": true,
+      "thresholdChars": 600,
+      "nodeChars": 400
+    }
   },
   "replyTimeoutMs": 600000,
   "reactions": {

@@ -16,6 +16,7 @@ const ATTACHMENT_KINDS: Record<string, AttachmentKind> = {
   file: "file",
   video: "video",
   record: "record",
+  forward: "forward",
 };
 
 export function segmentsOf(event: ObEvent): ObSegment[] {
@@ -80,11 +81,14 @@ export function collectAttachments(segments: ObSegment[]): Attachment[] {
     const kind = ATTACHMENT_KINDS[segment.type];
     if (!kind) continue;
     const data = segment.data ?? {};
-    const name = String(data.name ?? data.file ?? `${kind}-${attachments.length}`);
+    const name = String(data.name ?? data.file ?? data.id ?? `${kind}-${attachments.length}`);
     attachments.push({
       kind,
       name,
-      fileId: data.file_id === undefined || data.file_id === null ? null : String(data.file_id),
+      fileId:
+        kind === "forward"
+          ? (data.id === undefined || data.id === null ? null : String(data.id))
+          : (data.file_id === undefined || data.file_id === null ? null : String(data.file_id)),
       url: data.url === undefined || data.url === null || data.url === "" ? null : String(data.url),
       path: data.path === undefined || data.path === null || data.path === "" ? null : String(data.path),
       cachedPath: null,

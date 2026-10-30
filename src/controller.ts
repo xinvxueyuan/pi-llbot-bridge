@@ -10,6 +10,7 @@ import { filterTranscript } from "./bridge/filter";
 import { MediaCache } from "./media/cache";
 import { fetchAttachment } from "./media/fetch";
 import { fromApiMessage } from "./llbot/parse";
+import { expandForward } from "./llbot/forward";
 import type { Attachment, StoredMessage } from "./types";
 import type { PromptAttachment } from "./bridge/prompt";
 
@@ -133,6 +134,29 @@ export class BridgeController {
         log: (message) => context.ui.notify(message, "warning"),
       });
 
+      const forwardCache = new Map<string, string | null>();
+      const expand = async (id: string): Promise<string | null> => {
+        if (!forwardCache.has(id)) {
+          forwardCache.set(id, await expandForward(id, { call: (a, p) => server.call(a, p), log: (t) => context.ui.notify(t, "warning") }));
+        }
+        return forwardCache.get(id) ?? null;
+      };
+
+      const withForwards = await Promise.all(
+        messages.map(async (message) => {
+          const ids = message.attachments
+            .filter((attachment) => attachment.kind === "forward" && attachment.fileId)
+            .map((attachment) => attachment.fileId as string);
+          if (ids.length === 0) return message;
+          const parts: string[] = [];
+          for (const id of ids) {
+            const text = await expand(id);
+            if (text) parts.push(text);
+          }
+          return parts.length > 0 ? { ...message, text: `${message.text}\n${parts.join("\n")}`.trim() } : message;
+        }),
+      );
+
       const attachments: PromptAttachment[] = [];
       if (config.media.enabled) {
         for (const message of messages) {
@@ -140,6 +164,7 @@ export class BridgeController {
           const updated: Attachment[] = [];
           let changed = false;
           for (const attachment of message.attachments) {
+            if (attachment.kind === "forward") continue; // 合并转发走 expandForward，不下载
             if (attachment.kind === "image" && !config.media.downloadImages) continue;
             if (attachment.kind !== "image" && !config.media.downloadFiles) continue;
             const fetched = await fetchAttachment(attachment, {
@@ -165,7 +190,7 @@ export class BridgeController {
         cache.prune();
       }
 
-      const transcript = await filterTranscript(messages, request, { config: config.context.filter, complete });
+      const transcript = await filterTranscript(withForwards, request, { config: config.context.filter, complete });
       return { transcript, attachments };
     };
 

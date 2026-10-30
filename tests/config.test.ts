@@ -36,9 +36,15 @@ describe("loadConfig", () => {
     });
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060", ping: "14" });
     expect(cfg.trigger).toEqual({ allowSelf: false, owners: [], requireMention: false });
-    expect(cfg.replies).toEqual({ max: 3 });
+    expect(cfg.replies).toEqual({ max: 3, forwardLongText: { enabled: true, thresholdChars: 600, nodeChars: 400 } });
     expect(cfg.autoStart).toBe(true);
     expect(cfg.media.allowUpload).toBe(true);
+  });
+
+  it("forwardLongText 支持部分覆盖", () => {
+    const cfg = loadConfig(agentDirWith({ replies: { forwardLongText: { thresholdChars: 100 } } }), {});
+    expect(cfg.replies.forwardLongText).toEqual({ enabled: true, thresholdChars: 100, nodeChars: 400 });
+    expect(cfg.replies.max).toBe(3);
   });
 
   it("replies.max 夹在 -1..10，env 可覆盖", () => {

@@ -16,7 +16,7 @@ export interface ObEvent {
   sender?: { user_id?: number | string; nickname?: string; card?: string };
 }
 
-export type AttachmentKind = "image" | "file" | "video" | "record";
+export type AttachmentKind = "image" | "file" | "video" | "record" | "forward";
 
 export interface Attachment {
   kind: AttachmentKind;
