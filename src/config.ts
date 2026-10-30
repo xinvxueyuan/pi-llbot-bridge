@@ -16,8 +16,15 @@ export interface ContextConfig {
   filter: FilterConfig;
 }
 
+export interface RepliesConfig {
+  /** 每轮最多发送几条消息：0=不发，-1=不设上限，其余夹在 0..10 */
+  max: number;
+}
+
 export interface MediaConfig {
   enabled: boolean;
+  /** 允许 pi 主动上传图片/文件到群里 */
+  allowUpload: boolean;
   dir: string;
   downloadImages: boolean;
   downloadFiles: boolean;
@@ -42,6 +49,8 @@ export interface BridgeConfig {
   command: string;
   context: ContextConfig;
   media: MediaConfig;
+  replies: RepliesConfig;
+  autoStart: boolean;
   replyTimeoutMs: number;
   reactions: { resolving: string; done: string; fail: string };
   store: { path: string; keepPerGroup: number };
@@ -61,6 +70,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   },
   media: {
     enabled: true,
+    allowUpload: true,
     dir: "",
     downloadImages: true,
     downloadFiles: true,
@@ -70,12 +80,20 @@ export const DEFAULT_CONFIG: BridgeConfig = {
     downloadTimeoutMs: 20_000,
     attachImages: 3,
   },
+  replies: { max: 3 },
+  autoStart: true,
   replyTimeoutMs: 600_000,
   reactions: { resolving: "38", done: "148", fail: "10060" },
   store: { path: "", keepPerGroup: 500 },
   groups: { allow: [] },
   trigger: { allowSelf: false, owners: [], requireMention: false },
 };
+
+export function clampReplies(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_CONFIG.replies.max;
+  if (value < 0) return -1;
+  return Math.min(10, Math.floor(value));
+}
 
 export function configPath(agentDir: string): string {
   return join(agentDir, "llbot-bridge", "config.json");
@@ -95,6 +113,7 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
       filter: { ...DEFAULT_CONFIG.context.filter, ...(fromFile.context?.filter ?? {}) },
     },
     media: { ...DEFAULT_CONFIG.media, ...(fromFile.media ?? {}) },
+    replies: { ...DEFAULT_CONFIG.replies, ...(fromFile.replies ?? {}) },
     reactions: { ...DEFAULT_CONFIG.reactions, ...(fromFile.reactions ?? {}) },
     store: { ...DEFAULT_CONFIG.store, ...(fromFile.store ?? {}) },
     groups: { ...DEFAULT_CONFIG.groups, ...(fromFile.groups ?? {}) },
@@ -114,10 +133,13 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
   if (env.PI_LLBOT_MEDIA_TTL_HOURS) merged.media.ttlHours = Number(env.PI_LLBOT_MEDIA_TTL_HOURS);
   if (env.PI_LLBOT_ATTACH_IMAGES) merged.media.attachImages = Number(env.PI_LLBOT_ATTACH_IMAGES);
   if (env.PI_LLBOT_ALLOW_SELF) merged.trigger.allowSelf = env.PI_LLBOT_ALLOW_SELF !== "off";
+  if (env.PI_LLBOT_MAX_REPLIES) merged.replies.max = Number(env.PI_LLBOT_MAX_REPLIES);
+  if (env.PI_LLBOT_AUTOSTART) merged.autoStart = env.PI_LLBOT_AUTOSTART !== "off";
   if (env.PI_LLBOT_REQUIRE_MENTION) merged.trigger.requireMention = env.PI_LLBOT_REQUIRE_MENTION !== "off";
   if (env.PI_LLBOT_OWNERS) {
     merged.trigger.owners = env.PI_LLBOT_OWNERS.split(",").map((v) => v.trim()).filter(Boolean);
   }
+  merged.replies.max = clampReplies(merged.replies.max);
   if (!merged.store.path) merged.store.path = join(agentDir, "llbot-bridge", "messages.db");
   if (!merged.media.dir) merged.media.dir = join(agentDir, "llbot-bridge", "cache");
 

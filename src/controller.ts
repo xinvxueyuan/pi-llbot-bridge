@@ -45,6 +45,17 @@ export class BridgeController {
     this.lastContext = context;
   }
 
+  async autoStart(context: ExtensionContext): Promise<void> {
+    if (this.server) return;
+    const config = loadConfig(getAgentDir());
+    if (!config.autoStart) return;
+    if (!config.server.accessToken) {
+      context.ui.setStatus("llbot", "未配置 accessToken");
+      return;
+    }
+    await this.start(context);
+  }
+
   async start(context: ExtensionContext): Promise<void> {
     if (this.server) throw new Error("LLBot 桥已在运行，先执行 /link-llbot off");
     this.touch(context);

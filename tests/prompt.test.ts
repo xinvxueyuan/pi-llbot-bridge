@@ -26,6 +26,8 @@ const base = {
   transcript: "12:00 张三: 早",
   quoted: null,
   attachments: [] as PromptAttachment[],
+  maxReplies: 3,
+  mediaUpload: false,
 };
 
 describe("buildPrompt", () => {
@@ -49,7 +51,14 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("张三");
   });
 
-  it("结尾要求本轮调用一次 qq_reply", () => {
-    expect(buildPrompt(base)).toContain("必须调用 qq_reply");
+  it("结尾按上限说明发送条数", () => {
+    expect(buildPrompt(base)).toContain("最多发送 3 条消息");
+    expect(buildPrompt({ ...base, maxReplies: -1 })).toContain("不限条数");
+    expect(buildPrompt({ ...base, maxReplies: 1 })).toContain("最多发送 1 条消息");
+  });
+
+  it("开启上传时提示 qq_send_media", () => {
+    expect(buildPrompt({ ...base, mediaUpload: true })).toContain("qq_send_media");
+    expect(buildPrompt(base)).not.toContain("qq_send_media");
   });
 });

@@ -36,6 +36,16 @@ describe("loadConfig", () => {
     });
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060" });
     expect(cfg.trigger).toEqual({ allowSelf: false, owners: [], requireMention: false });
+    expect(cfg.replies).toEqual({ max: 3 });
+    expect(cfg.autoStart).toBe(true);
+    expect(cfg.media.allowUpload).toBe(true);
+  });
+
+  it("replies.max 夹在 -1..10，env 可覆盖", () => {
+    expect(loadConfig(agentDirWith({ replies: { max: 12 } }), {}).replies.max).toBe(10);
+    expect(loadConfig(agentDirWith({ replies: { max: -5 } }), {}).replies.max).toBe(-1);
+    expect(loadConfig(agentDirWith(), { PI_LLBOT_MAX_REPLIES: "-1" }).replies.max).toBe(-1);
+    expect(loadConfig(agentDirWith(), { PI_LLBOT_AUTOSTART: "off" }).autoStart).toBe(false);
   });
 
   it("env 覆盖主人号与自我触发开关", () => {

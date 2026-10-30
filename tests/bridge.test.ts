@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Bridge, type BridgeDeps, type ContextInput } from "../src/bridge/bridge";
 import { DEFAULT_CONFIG } from "../src/config";
@@ -180,6 +183,64 @@ describe("Bridge", () => {
       { type: "reply", data: { id: 1001 } },
       { type: "text", data: { text: "答复正文" } },
     ]);
+  });
+
+  it("达到发送上限后不再发送（max=1）", async () => {
+    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1 } } });
+    await bridge.handleEvent(groupMessage());
+    expect((await bridge.reply("第一条")).sent).toBe(true);
+    const second = await bridge.reply("第二条");
+    expect(second).toMatchObject({ sent: false, reason: "limit" });
+    expect(calls.filter((c) => c.action === "send_group_msg")).toHaveLength(1);
+  });
+
+  it("max=-1 时可发多条", async () => {
+    const { bridge, calls } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: -1 } } });
+    await bridge.handleEvent(groupMessage());
+    expect((await bridge.reply("一")).sent).toBe(true);
+    expect((await bridge.reply("二")).sent).toBe(true);
+    expect(calls.filter((c) => c.action === "send_group_msg")).toHaveLength(2);
+  });
+
+  it("图片以 base64 段发送并计入条数", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-media-"));
+    const file = join(dir, "a.png");
+    writeFileSync(file, "png-bytes");
+    const { bridge, calls } = makeBridge();
+    await bridge.handleEvent(groupMessage());
+    const result = await bridge.sendMedia({ path: file, kind: "image" });
+    expect(result).toMatchObject({ sent: true, count: 1 });
+    const sent = calls.filter((c) => c.action === "send_group_msg").pop()!;
+    expect(sent.params.message[0].type).toBe("image");
+    expect(String(sent.params.message[0].data.file)).toMatch(/^base64:\/\//);
+  });
+
+  it("文件走 upload_group_file 并带名字", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-media-"));
+    const file = join(dir, "report.pdf");
+    writeFileSync(file, "pdf-bytes");
+    const { bridge, calls } = makeBridge();
+    await bridge.handleEvent(groupMessage());
+    expect(await bridge.sendMedia({ path: file, kind: "file" })).toMatchObject({ sent: true });
+    const call = calls.filter((c) => c.action === "upload_group_file").pop()!;
+    expect(call.params).toMatchObject({ group_id: 123, name: "report.pdf" });
+  });
+
+  it("不存在的文件不发", async () => {
+    const { bridge, calls } = makeBridge();
+    await bridge.handleEvent(groupMessage());
+    expect(await bridge.sendMedia({ path: "C:/nope/missing.png", kind: "image" })).toMatchObject({ sent: false, reason: "missing" });
+    expect(calls.some((c) => c.action === "send_group_msg")).toBe(false);
+  });
+
+  it("媒体也受发送上限约束", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pi-media-"));
+    const file = join(dir, "a.png");
+    writeFileSync(file, "png-bytes");
+    const { bridge } = makeBridge({ config: { ...DEFAULT_CONFIG, replies: { max: 1 } } });
+    await bridge.handleEvent(groupMessage());
+    expect((await bridge.reply("文字")).sent).toBe(true);
+    expect(await bridge.sendMedia({ path: file, kind: "image" })).toMatchObject({ sent: false, reason: "limit" });
   });
 
   it("没调工具时用 lastText 兜底发送并打 done", async () => {

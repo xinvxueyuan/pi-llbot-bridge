@@ -6,6 +6,7 @@
     "accessToken": "换成你自己的 token"
   },
   "command": "/pi",
+  "autoStart": true,
   "context": {
     "recent": 20,
     "quotedBefore": 10,
@@ -27,7 +28,11 @@
     "ttlHours": 72,
     "maxTotalBytes": 536870912,
     "downloadTimeoutMs": 20000,
-    "attachImages": 3
+    "attachImages": 3,
+    "allowUpload": true
+  },
+  "replies": {
+    "max": 3
   },
   "replyTimeoutMs": 600000,
   "reactions": {

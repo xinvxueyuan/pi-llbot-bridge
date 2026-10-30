@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { BridgeController } from "./controller";
 import { makeReplyTool } from "./tools/reply";
+import { makeMediaTool } from "./tools/media";
 
 export default function llbotBridge(pi: ExtensionAPI) {
   const controller = new BridgeController(pi);
@@ -29,6 +30,17 @@ export default function llbotBridge(pi: ExtensionAPI) {
   });
 
   pi.registerTool(makeReplyTool(() => controller.bridge));
+  pi.registerTool(makeMediaTool(() => controller.bridge));
+
+  // 常驻模式：会话启动即自动连 LLBot（配置 autoStart=false 可关）
+  pi.on("session_start", async (_event, ctx) => {
+    controller.touch(ctx);
+    try {
+      await controller.autoStart(ctx);
+    } catch (error) {
+      ctx.ui.notify(`LLBot 自动连接失败：${(error as Error).message}`, "warning");
+    }
+  });
 
   pi.on("before_agent_start", (event) => {
     if (event.messageType === "user") controller.bridge?.markRunStarted(event.prompt);

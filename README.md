@@ -45,12 +45,15 @@ cp config.example.json ~/.pi/agent/llbot-bridge/config.json
 
 LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 
-## 用法
+## 用法（常驻模式）
 
-- `/link-llbot`：启动监听（状态栏显示「等待 LLBot 连入」→ 连上后显示账号）
+安装后**不需要手动启动**：pi 会话一起来（`session_start`）扩展就自动监听并等 LLBot 连入，消息自动注入当前会话。
+想关掉自动连：配置 `"autoStart": false`，或临时 `/link-llbot off`。
+
+- 群里：`@机器人 /pi <请求>`（`trigger.requireMention=false` 时连 @ 都不用）
+- `/link-llbot`：手动启动（autoStart 关掉时用）
 - `/link-llbot status`：查看状态
 - `/link-llbot off`：停止
-- 群里：`@机器人 /pi <请求>`
 
 ## 一次请求发生了什么
 
@@ -86,6 +89,15 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 3. `owners` 为空数组时只受 `allowSelf` 控制；**建议始终写死主人号**。
 
 防自激：桥会记住自己发出消息的 `message_id`，同一 id 不会再触发；且触发必须有 `@自己 + /pi` 前缀，普通答复不会命中。
+
+## 发送条数与媒体
+
+- `replies.max`：每轮最多发几条消息，取值 `0..10`，`-1` = 不设上限；默认 `3`。超出后 `qq_reply` / `qq_send_media` 会返回「已达上限」。
+- `media.allowUpload`：是否允许 pi 主动上传媒体，默认 `true`。
+- 模型可调 `qq_send_media({ path, kind: "image"|"file", name? })`：
+  - `kind=image` → 走图片消息（本地文件转 base64 段）；
+  - `kind=file` → 走 `upload_group_file`（群文件，带显示名）；
+  - 受 `media.maxFileBytes` 单文件上限与 `replies.max` 条数上限约束。
 
 ## 媒体缓存
 

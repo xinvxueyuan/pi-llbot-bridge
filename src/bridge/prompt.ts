@@ -16,6 +16,8 @@ export interface PromptInput {
   transcript: string;
   quoted: StoredMessage | null;
   attachments: PromptAttachment[];
+  maxReplies: number;
+  mediaUpload: boolean;
 }
 
 export function buildPrompt(input: PromptInput): string {
@@ -39,8 +41,17 @@ export function buildPrompt(input: PromptInput): string {
   lines.push("");
   lines.push(`[本次请求] ${input.requester}: ${input.request}`);
   lines.push("");
+  const replyRule =
+    input.maxReplies < 0
+      ? "可以分多条发送，不限条数"
+      : input.maxReplies === 0
+        ? "本轮不要发送任何消息"
+        : `最多发送 ${input.maxReplies} 条消息`;
   lines.push(
-    "请完成上面的请求，然后必须调用 qq_reply 工具把最终答复发回群里（本轮只调用一次；内容直接面向群友，不要提到工具名或内部细节）。",
+    `请完成上面的请求，然后调用 qq_reply 把答复发回群里（${replyRule}；内容直接面向群友，不要提到工具名或内部细节）。`,
   );
+  if (input.mediaUpload) {
+    lines.push("需要发图片或文件时，用 qq_send_media 工具，path 传本机绝对路径（可以用你刚生成的文件或上面列出的本地附件）。");
+  }
   return lines.join("\n");
 }

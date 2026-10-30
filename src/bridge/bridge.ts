@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename } from "node:path";
 import type { BridgeConfig } from "../config";
 import type { MessageStore } from "../store/db";
 import type { ObEvent, StoredMessage } from "../types";
@@ -41,6 +43,18 @@ export interface BridgeDeps {
   log?: (message: string) => void;
   now?: () => number;
   makeTurnId?: () => string;
+}
+
+export interface SendResult {
+  sent: boolean;
+  count: number;
+  reason?: "no-turn" | "limit" | "disabled" | "missing" | "too-large" | "send-failed";
+}
+
+export interface MediaInput {
+  path: string;
+  kind: "image" | "file";
+  name?: string;
 }
 
 export interface SettleOutcome {
@@ -106,6 +120,8 @@ export class Bridge {
       transcript: bundle.transcript,
       quoted,
       attachments: bundle.attachments,
+      maxReplies: this.deps.config.replies.max,
+      mediaUpload: this.deps.config.media.allowUpload,
     });
 
     this.current = {
@@ -132,9 +148,10 @@ export class Bridge {
     }
   }
 
-  async reply(text: string): Promise<{ sent: boolean; count: number }> {
+  async reply(text: string): Promise<SendResult> {
     const turn = this.current;
-    if (!turn) return { sent: false, count: 0 };
+    if (!turn) return { sent: false, count: 0, reason: "no-turn" };
+    if (this.limitReached(turn)) return { sent: false, count: turn.replied, reason: "limit" };
     const data = await this.deps.client.call<{ message_id?: number | string }>("send_group_msg", {
       group_id: Number(turn.groupId),
       message: [
@@ -145,6 +162,45 @@ export class Bridge {
     if (data?.message_id !== undefined && data?.message_id !== null) this.sentIds.add(String(data.message_id));
     turn.replied += 1;
     return { sent: true, count: turn.replied };
+  }
+
+  async sendMedia(input: MediaInput): Promise<SendResult> {
+    const turn = this.current;
+    if (!turn) return { sent: false, count: 0, reason: "no-turn" };
+    if (!this.deps.config.media.allowUpload) return { sent: false, count: turn.replied, reason: "disabled" };
+    if (this.limitReached(turn)) return { sent: false, count: turn.replied, reason: "limit" };
+    if (!input.path || !existsSync(input.path)) return { sent: false, count: turn.replied, reason: "missing" };
+    const size = statSync(input.path).size;
+    if (size > this.deps.config.media.maxFileBytes) return { sent: false, count: turn.replied, reason: "too-large" };
+
+    try {
+      if (input.kind === "image") {
+        const base64 = readFileSync(input.path).toString("base64");
+        const data = await this.deps.client.call<{ message_id?: number | string }>("send_group_msg", {
+          group_id: Number(turn.groupId),
+          message: [{ type: "image", data: { file: `base64://${base64}` } }],
+        });
+        if (data?.message_id !== undefined && data?.message_id !== null) this.sentIds.add(String(data.message_id));
+      } else {
+        await this.deps.client.call("upload_group_file", {
+          group_id: Number(turn.groupId),
+          file: input.path,
+          name: input.name ?? basename(input.path),
+        });
+      }
+    } catch (error) {
+      this.deps.log?.(`发送媒体失败：${(error as Error).message}`);
+      return { sent: false, count: turn.replied, reason: "send-failed" };
+    }
+
+    turn.replied += 1;
+    return { sent: true, count: turn.replied };
+  }
+
+  private limitReached(turn: TurnState): boolean {
+    const max = this.deps.config.replies.max;
+    if (max < 0) return false;
+    return turn.replied >= max;
   }
 
   async settle(outcome: SettleOutcome): Promise<void> {
