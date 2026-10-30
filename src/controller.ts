@@ -122,6 +122,8 @@ export class BridgeController {
           const updated: Attachment[] = [];
           let changed = false;
           for (const attachment of message.attachments) {
+            if (attachment.kind === "image" && !config.media.downloadImages) continue;
+            if (attachment.kind !== "image" && !config.media.downloadFiles) continue;
             const fetched = await fetchAttachment(attachment, {
               cache,
               maxFileBytes: config.media.maxFileBytes,

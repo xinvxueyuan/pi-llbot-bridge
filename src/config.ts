@@ -28,6 +28,13 @@ export interface MediaConfig {
   attachImages: number;
 }
 
+export interface TriggerConfig {
+  /** 是否允许「机器人自己账号」发出的消息触发（主人号自己给自己下命令） */
+  allowSelf: boolean;
+  /** 允许触发的主人 QQ 号；空数组 = 只要是 allowSelf 就放行 */
+  owners: string[];
+}
+
 export interface BridgeConfig {
   server: { host: string; port: number; path: string; accessToken: string };
   command: string;
@@ -37,6 +44,7 @@ export interface BridgeConfig {
   reactions: { resolving: string; done: string; fail: string };
   store: { path: string; keepPerGroup: number };
   groups: { allow: string[] };
+  trigger: TriggerConfig;
 }
 
 export const DEFAULT_CONFIG: BridgeConfig = {
@@ -64,6 +72,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   reactions: { resolving: "38", done: "148", fail: "10060" },
   store: { path: "", keepPerGroup: 500 },
   groups: { allow: [] },
+  trigger: { allowSelf: false, owners: [] },
 };
 
 export function configPath(agentDir: string): string {
@@ -87,6 +96,7 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
     reactions: { ...DEFAULT_CONFIG.reactions, ...(fromFile.reactions ?? {}) },
     store: { ...DEFAULT_CONFIG.store, ...(fromFile.store ?? {}) },
     groups: { ...DEFAULT_CONFIG.groups, ...(fromFile.groups ?? {}) },
+    trigger: { ...DEFAULT_CONFIG.trigger, ...(fromFile.trigger ?? {}) },
   };
 
   if (env.PI_LLBOT_HOST) merged.server.host = env.PI_LLBOT_HOST;
@@ -101,6 +111,10 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
   if (env.PI_LLBOT_MEDIA_DIR) merged.media.dir = env.PI_LLBOT_MEDIA_DIR;
   if (env.PI_LLBOT_MEDIA_TTL_HOURS) merged.media.ttlHours = Number(env.PI_LLBOT_MEDIA_TTL_HOURS);
   if (env.PI_LLBOT_ATTACH_IMAGES) merged.media.attachImages = Number(env.PI_LLBOT_ATTACH_IMAGES);
+  if (env.PI_LLBOT_ALLOW_SELF) merged.trigger.allowSelf = env.PI_LLBOT_ALLOW_SELF !== "off";
+  if (env.PI_LLBOT_OWNERS) {
+    merged.trigger.owners = env.PI_LLBOT_OWNERS.split(",").map((v) => v.trim()).filter(Boolean);
+  }
   if (!merged.store.path) merged.store.path = join(agentDir, "llbot-bridge", "messages.db");
   if (!merged.media.dir) merged.media.dir = join(agentDir, "llbot-bridge", "cache");
 

@@ -125,6 +125,37 @@ describe("Bridge", () => {
     expect(sent[0].prompt).toContain("（无可用上下文）");
   });
 
+  it("默认（allowSelf=false）自我消息不触发", async () => {
+    const { bridge, sent } = makeBridge();
+    await bridge.handleEvent(groupMessage({ post_type: "message_sent", user_id: 999 }));
+    expect(sent).toHaveLength(0);
+  });
+
+  it("allowSelf + owners 命中时自我消息可触发", async () => {
+    const { bridge, sent } = makeBridge({ config: { ...DEFAULT_CONFIG, trigger: { allowSelf: true, owners: ["999"] } } });
+    await bridge.handleEvent(groupMessage({ post_type: "message_sent", user_id: 999 }));
+    expect(sent).toHaveLength(1);
+  });
+
+  it("allowSelf 但 owners 不匹配时不触发", async () => {
+    const { bridge, sent } = makeBridge({ config: { ...DEFAULT_CONFIG, trigger: { allowSelf: true, owners: ["123"] } } });
+    await bridge.handleEvent(groupMessage({ post_type: "message_sent", user_id: 999 }));
+    expect(sent).toHaveLength(0);
+  });
+
+  it("自己刚发出的回复（同 message_id）不会自激", async () => {
+    const { bridge, sent } = makeBridge({
+      config: { ...DEFAULT_CONFIG, trigger: { allowSelf: true, owners: ["999"] } },
+      client: { call: async (action: string) => (action === "send_group_msg" ? { message_id: 2001 } : {}) } as unknown as BridgeDeps["client"],
+    });
+    await bridge.handleEvent(groupMessage());
+    await bridge.reply("答复");
+    await bridge.handleEvent(
+      groupMessage({ post_type: "message_sent", user_id: 999, message_id: 2001 }),
+    );
+    expect(sent).toHaveLength(1);
+  });
+
   it("忙碌时再触发只发提示，不新建 turn", async () => {
     const { bridge, calls, sent } = makeBridge();
     await bridge.handleEvent(groupMessage());

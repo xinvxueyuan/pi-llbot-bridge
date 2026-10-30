@@ -35,6 +35,13 @@ describe("loadConfig", () => {
       attachImages: 3,
     });
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060" });
+    expect(cfg.trigger).toEqual({ allowSelf: false, owners: [] });
+  });
+
+  it("env 覆盖主人号与自我触发开关", () => {
+    const cfg = loadConfig(agentDirWith(), { PI_LLBOT_ALLOW_SELF: "on", PI_LLBOT_OWNERS: "1330509996, 42" });
+    expect(cfg.trigger.allowSelf).toBe(true);
+    expect(cfg.trigger.owners).toEqual(["1330509996", "42"]);
   });
 
   it("文件部分覆盖时保留其余默认（context/media/reactions 深合并）", () => {

@@ -54,6 +54,7 @@ export class Bridge {
   selfName = "pi";
   private current: TurnState | null = null;
   private readonly seen = new Set<string>();
+  private readonly sentIds = new Set<string>();
 
   constructor(private readonly deps: BridgeDeps) {}
 
@@ -62,13 +63,15 @@ export class Bridge {
   }
 
   async handleEvent(event: ObEvent): Promise<void> {
-    if (event.post_type !== "message" || event.message_type !== "group") return;
+    const isMessage = event.post_type === "message" || event.post_type === "message_sent";
+    if (!isMessage || event.message_type !== "group") return;
     const stored = toStored(event, this.selfId);
     if (!stored) return;
 
     this.deps.store.insert(stored);
     this.deps.store.prune(stored.groupId, this.deps.config.store.keepPerGroup);
-    if (stored.isSelf) return;
+    if (stored.isSelf && !this.selfTriggerAllowed(stored.userId)) return;
+    if (this.sentIds.has(stored.messageId)) return;
     if (!this.groupAllowed(stored.groupId)) return;
 
     const hit = extractCommand(segmentsOf(event), this.selfId, this.deps.config.command);
@@ -130,13 +133,14 @@ export class Bridge {
   async reply(text: string): Promise<{ sent: boolean; count: number }> {
     const turn = this.current;
     if (!turn) return { sent: false, count: 0 };
-    await this.deps.client.call("send_group_msg", {
+    const data = await this.deps.client.call<{ message_id?: number | string }>("send_group_msg", {
       group_id: Number(turn.groupId),
       message: [
         { type: "reply", data: { id: Number(turn.messageId) } },
         { type: "text", data: { text } },
       ],
     });
+    if (data?.message_id !== undefined && data?.message_id !== null) this.sentIds.add(String(data.message_id));
     turn.replied += 1;
     return { sent: true, count: turn.replied };
   }
@@ -192,6 +196,12 @@ export class Bridge {
     }
   }
 
+  private selfTriggerAllowed(userId: string): boolean {
+    const trigger = this.deps.config.trigger;
+    if (!trigger.allowSelf) return false;
+    return trigger.owners.length === 0 || trigger.owners.includes(userId);
+  }
+
   private groupAllowed(groupId: string): boolean {
     const allow = this.deps.config.groups.allow;
     return allow.length === 0 || allow.includes(groupId);
@@ -207,7 +217,11 @@ export class Bridge {
 
   private async sendText(groupId: string, text: string): Promise<void> {
     try {
-      await this.deps.client.call("send_group_msg", { group_id: Number(groupId), message: [{ type: "text", data: { text } }] });
+      const data = await this.deps.client.call<{ message_id?: number | string }>("send_group_msg", {
+        group_id: Number(groupId),
+        message: [{ type: "text", data: { text } }],
+      });
+      if (data?.message_id !== undefined && data?.message_id !== null) this.sentIds.add(String(data.message_id));
     } catch (error) {
       this.deps.log?.(`发送失败：${(error as Error).message}`);
     }

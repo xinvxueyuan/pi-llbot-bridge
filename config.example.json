@@ -1,12 +1,22 @@
 {
-  "server": { "host": "127.0.0.1", "port": 3001, "path": "/onebot/v11/ws", "accessToken": "换成你自己的 token" },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 3001,
+    "path": "/onebot/v11/ws",
+    "accessToken": "换成你自己的 token"
+  },
   "command": "/pi",
   "context": {
     "recent": 20,
     "quotedBefore": 10,
     "quotedAfter": 5,
     "maxMessages": 80,
-    "filter": { "enabled": true, "maxInputChars": 8000, "maxOutputChars": 2000, "timeoutMs": 30000 }
+    "filter": {
+      "enabled": true,
+      "maxInputChars": 8000,
+      "maxOutputChars": 2000,
+      "timeoutMs": 30000
+    }
   },
   "media": {
     "enabled": true,
@@ -20,7 +30,20 @@
     "attachImages": 3
   },
   "replyTimeoutMs": 600000,
-  "reactions": { "resolving": "38", "done": "148", "fail": "10060" },
-  "store": { "path": "", "keepPerGroup": 500 },
-  "groups": { "allow": [] }
+  "reactions": {
+    "resolving": "38",
+    "done": "148",
+    "fail": "10060"
+  },
+  "store": {
+    "path": "",
+    "keepPerGroup": 500
+  },
+  "groups": {
+    "allow": []
+  },
+  "trigger": {
+    "allowSelf": false,
+    "owners": []
+  }
 }

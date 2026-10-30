@@ -47,6 +47,12 @@ describe("parse", () => {
     expect(toStored(groupEvent({ user_id: 999 }), "999")?.isSelf).toBe(true);
   });
 
+  it("toStored 接受 message_sent（自我消息）并标记 isSelf", () => {
+    const stored = toStored(groupEvent({ post_type: "message_sent", user_id: 999 }), "999");
+    expect(stored?.isSelf).toBe(true);
+    expect(stored?.messageId).toBe("1001");
+  });
+
   it("toStored 缺 message_seq 时 seq 为 null", () => {
     expect(toStored(groupEvent({ message_seq: undefined }), "999")?.seq).toBeNull();
   });

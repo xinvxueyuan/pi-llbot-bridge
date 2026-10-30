@@ -56,6 +56,20 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 5. 把「筛选后的上下文 + 本地附件路径 + 请求」注入会话；
 6. pi 调 `qq_reply` 引用回复到群里，表态变 148；异常/超时表态 10060。
 
+## 主人号自己发命令（自我触发）
+
+默认桥只处理**别人**发来的消息；如果 bot 号就是你的主号、你要自己 @ 自己下命令，需要三件事：
+
+1. LLBot 的 `ws-reverse` 条目设 `reportSelfMessage: true`（否则 LLBot 不把自我消息上报）；
+2. 桥配置加：
+   ```json
+   "trigger": { "allowSelf": true, "owners": ["1330509996"] }
+   ```
+   （或 env：`PI_LLBOT_ALLOW_SELF=on`、`PI_LLBOT_OWNERS=1330509996`）
+3. `owners` 为空数组时只受 `allowSelf` 控制；**建议始终写死主人号**。
+
+防自激：桥会记住自己发出消息的 `message_id`，同一 id 不会再触发；且触发必须有 `@自己 + /pi` 前缀，普通答复不会命中。
+
 ## 媒体缓存
 
 - 目录：`media.dir`，默认 `~/.pi/agent/llbot-bridge/cache`；sha256 内容寻址，同内容复用。

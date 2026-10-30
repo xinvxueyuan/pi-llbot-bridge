@@ -105,7 +105,8 @@ function displayName(event: ObEvent): string {
 }
 
 export function toStored(event: ObEvent, selfId: string): StoredMessage | null {
-  if (event.post_type !== "message" || event.message_type !== "group") return null;
+  const isMessage = event.post_type === "message" || event.post_type === "message_sent";
+  if (!isMessage || event.message_type !== "group") return null;
   const groupId = String(event.group_id ?? "");
   const messageId = String(event.message_id ?? "");
   if (!groupId || !messageId) return null;
