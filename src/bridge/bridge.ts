@@ -69,6 +69,7 @@ export class Bridge {
   private current: TurnState | null = null;
   private readonly seen = new Set<string>();
   private readonly sentIds = new Set<string>();
+  private lastSeen: { groupId: string; messageId: string } | null = null;
 
   constructor(private readonly deps: BridgeDeps) {}
 
@@ -84,6 +85,7 @@ export class Bridge {
 
     this.deps.store.insert(stored);
     this.deps.store.prune(stored.groupId, this.deps.config.store.keepPerGroup);
+    this.lastSeen = { groupId: stored.groupId, messageId: stored.messageId };
     if (stored.isSelf && !this.selfTriggerAllowed(stored.userId)) return;
     if (this.sentIds.has(stored.messageId)) return;
     if (!this.groupAllowed(stored.groupId)) return;
@@ -195,6 +197,23 @@ export class Bridge {
 
     turn.replied += 1;
     return { sent: true, count: turn.replied };
+  }
+
+  /** 在最近一条处理过的群消息上打一个「存活」表态，用于平台侧快速确认链路。 */
+  async ping(): Promise<{ sent: boolean; groupId?: string }> {
+    const target = this.lastSeen;
+    if (!target) return { sent: false };
+    try {
+      await this.deps.client.call("set_msg_emoji_like", {
+        message_id: Number(target.messageId),
+        emoji_id: this.deps.config.reactions.ping,
+        set: true,
+      });
+      return { sent: true, groupId: target.groupId };
+    } catch (error) {
+      this.deps.log?.(`ping 表态失败：${(error as Error).message}`);
+      return { sent: false };
+    }
   }
 
   private limitReached(turn: TurnState): boolean {

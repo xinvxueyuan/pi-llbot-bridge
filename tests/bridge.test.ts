@@ -167,6 +167,21 @@ describe("Bridge", () => {
     expect(sent).toHaveLength(1);
   });
 
+  it("ping 在最近一条群消息上打 ping 表态", async () => {
+    const { bridge, calls } = makeBridge();
+    await bridge.handleEvent(groupMessage());
+    const result = await bridge.ping();
+    expect(result).toEqual({ sent: true, groupId: "123" });
+    const emoji = calls.filter((c) => c.action === "set_msg_emoji_like").pop()!;
+    expect(emoji.params).toEqual({ message_id: 1001, emoji_id: "14", set: true });
+  });
+
+  it("没有处理过任何消息时 ping 不发", async () => {
+    const { bridge, calls } = makeBridge();
+    expect(await bridge.ping()).toEqual({ sent: false });
+    expect(calls).toHaveLength(0);
+  });
+
   it("忙碌时再触发只发提示，不新建 turn", async () => {
     const { bridge, calls, sent } = makeBridge();
     await bridge.handleEvent(groupMessage());

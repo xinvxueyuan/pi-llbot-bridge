@@ -38,7 +38,8 @@
   "reactions": {
     "resolving": "38",
     "done": "148",
-    "fail": "10060"
+    "fail": "10060",
+    "ping": "14"
   },
   "store": {
     "path": "",

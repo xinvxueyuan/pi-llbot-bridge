@@ -1,6 +1,6 @@
 {
   "name": "pi-llbot-bridge",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Bridge a locally hosted LLBot (OneBot 11, reverse WebSocket) into a running Pi session",
   "type": "module",
   "license": "MIT",

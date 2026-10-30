@@ -53,6 +53,7 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 - 群里：`@机器人 /pi <请求>`（`trigger.requireMention=false` 时连 @ 都不用）
 - `/link-llbot`：手动启动（autoStart 关掉时用）
 - `/link-llbot status`：查看状态
+- `/lls`：`/link-llbot status` 的别名；连上时还会在**最近一条群消息**上打一个 ping 表态（`reactions.ping`，默认 `14`），用来一眼确认链路活着
 - `/link-llbot off`：停止
 
 ## 一次请求发生了什么

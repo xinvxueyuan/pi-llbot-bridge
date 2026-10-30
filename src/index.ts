@@ -29,6 +29,14 @@ export default function llbotBridge(pi: ExtensionAPI) {
     },
   });
 
+  pi.registerCommand("lls", {
+    description: "link-llbot status 的别名：查看连接状态，并在最近一条群消息上打一个 ping 表态",
+    handler: async (_args, ctx) => {
+      controller.touch(ctx);
+      ctx.ui.notify(await controller.pingStatus(), "info");
+    },
+  });
+
   pi.registerTool(makeReplyTool(() => controller.bridge));
   pi.registerTool(makeMediaTool(() => controller.bridge));
 

@@ -41,6 +41,13 @@ export class BridgeController {
     return `已连接 ${this.instance?.selfName ?? ""}(${this.instance?.selfId ?? ""})`;
   }
 
+  async pingStatus(): Promise<string> {
+    const status = this.status();
+    if (!this.instance || !this.server?.connected) return status;
+    const ping = await this.instance.ping();
+    return ping.sent ? `${status}（已在群 ${ping.groupId} 的最新消息上打 ping 表态）` : `${status}（暂无可表态的消息）`;
+  }
+
   touch(context: ExtensionContext): void {
     this.lastContext = context;
   }

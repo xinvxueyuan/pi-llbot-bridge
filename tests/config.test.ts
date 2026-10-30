@@ -34,7 +34,7 @@ describe("loadConfig", () => {
       maxTotalBytes: 536870912,
       attachImages: 3,
     });
-    expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060" });
+    expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060", ping: "14" });
     expect(cfg.trigger).toEqual({ allowSelf: false, owners: [], requireMention: false });
     expect(cfg.replies).toEqual({ max: 3 });
     expect(cfg.autoStart).toBe(true);
@@ -64,7 +64,7 @@ describe("loadConfig", () => {
     expect(cfg.context.filter).toEqual({ enabled: false, maxInputChars: 8000, maxOutputChars: 2000, timeoutMs: 30000 });
     expect(cfg.media.ttlHours).toBe(1);
     expect(cfg.media.maxTotalBytes).toBe(536870912);
-    expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "9" });
+    expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "9", ping: "14" });
   });
 
   it("env 覆盖服务端参数", () => {

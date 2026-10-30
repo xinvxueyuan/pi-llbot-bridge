@@ -52,7 +52,7 @@ export interface BridgeConfig {
   replies: RepliesConfig;
   autoStart: boolean;
   replyTimeoutMs: number;
-  reactions: { resolving: string; done: string; fail: string };
+  reactions: { resolving: string; done: string; fail: string; ping: string };
   store: { path: string; keepPerGroup: number };
   groups: { allow: string[] };
   trigger: TriggerConfig;
@@ -83,7 +83,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   replies: { max: 3 },
   autoStart: true,
   replyTimeoutMs: 600_000,
-  reactions: { resolving: "38", done: "148", fail: "10060" },
+  reactions: { resolving: "38", done: "148", fail: "10060", ping: "14" },
   store: { path: "", keepPerGroup: 500 },
   groups: { allow: [] },
   trigger: { allowSelf: false, owners: [], requireMention: false },
@@ -133,6 +133,7 @@ export function loadConfig(agentDir: string, env: Record<string, string | undefi
   if (env.PI_LLBOT_MEDIA_TTL_HOURS) merged.media.ttlHours = Number(env.PI_LLBOT_MEDIA_TTL_HOURS);
   if (env.PI_LLBOT_ATTACH_IMAGES) merged.media.attachImages = Number(env.PI_LLBOT_ATTACH_IMAGES);
   if (env.PI_LLBOT_ALLOW_SELF) merged.trigger.allowSelf = env.PI_LLBOT_ALLOW_SELF !== "off";
+  if (env.PI_LLBOT_REACTION_PING) merged.reactions.ping = env.PI_LLBOT_REACTION_PING;
   if (env.PI_LLBOT_MAX_REPLIES) merged.replies.max = Number(env.PI_LLBOT_MAX_REPLIES);
   if (env.PI_LLBOT_AUTOSTART) merged.autoStart = env.PI_LLBOT_AUTOSTART !== "off";
   if (env.PI_LLBOT_REQUIRE_MENTION) merged.trigger.requireMention = env.PI_LLBOT_REQUIRE_MENTION !== "off";
