@@ -25,12 +25,13 @@
     "dir": "",
     "downloadImages": true,
     "downloadFiles": true,
-    "maxFileBytes": 20971520,
+    "maxFileBytes": 52428800,
     "ttlHours": 72,
     "maxTotalBytes": 536870912,
     "downloadTimeoutMs": 20000,
     "attachImages": 3,
-    "allowUpload": true
+    "allowUpload": true,
+    "eagerDownload": true
   },
   "replies": {
     "max": 3,

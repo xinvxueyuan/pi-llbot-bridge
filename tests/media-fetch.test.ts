@@ -65,6 +65,20 @@ describe("fetchAttachment（R12）", () => {
     expect(result.cachedPath).toBeNull();
   });
 
+  it("直链失败时回落到 get_file 再下", async () => {
+    const tmp = join(mkdtempSync(join(tmpdir(), "pi-src-")), "a.jpg");
+    writeFileSync(tmp, "from-getfile");
+    const call = vi.fn(async () => ({ file: tmp, url: "" }));
+    const download = vi.fn(async () => {
+      throw new Error("HTTP 403");
+    });
+    const { deps: d } = deps({ call, download });
+    const result = await fetchAttachment(base({ url: "https://expired/a.jpg" }), d);
+    expect(download).toHaveBeenCalled();
+    expect(call).toHaveBeenCalledWith("get_image", { file: "a.jpg", download: true });
+    expect(result.cachedPath).toBeTruthy();
+  });
+
   it("超过单文件上限时拒绝并返回原附件", async () => {
     const { deps: d } = deps({ download: vi.fn(async () => Buffer.alloc(4096)), maxFileBytes: 16 });
     const result = await fetchAttachment(base({ url: "https://x/a.jpg" }), d);

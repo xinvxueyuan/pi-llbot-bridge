@@ -29,10 +29,11 @@ describe("loadConfig", () => {
       enabled: true,
       downloadImages: true,
       downloadFiles: true,
-      maxFileBytes: 20971520,
+      maxFileBytes: 52428800,
       ttlHours: 72,
       maxTotalBytes: 536870912,
       attachImages: 3,
+      eagerDownload: true,
     });
     expect(cfg.reactions).toEqual({ resolving: "38", done: "148", fail: "10060", ping: "14" });
     expect(cfg.trigger).toEqual({ allowSelf: false, owners: [], requireMention: false });

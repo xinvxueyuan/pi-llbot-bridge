@@ -41,6 +41,8 @@ export interface BridgeDeps {
   sendUserMessage: (prompt: string, attachments: PromptAttachment[], options?: { deliverAs?: "steer" | "followUp" }) => void;
   isIdle: () => boolean;
   collectContext: (input: ContextInput) => Promise<ContextBundle>;
+  /** 消息入库后回调（用于立即预取媒体） */
+  onMessage?: (message: StoredMessage) => void;
   log?: (message: string) => void;
   now?: () => number;
   makeTurnId?: () => string;
@@ -87,6 +89,7 @@ export class Bridge {
     this.deps.store.insert(stored);
     this.deps.store.prune(stored.groupId, this.deps.config.store.keepPerGroup);
     this.lastSeen = { groupId: stored.groupId, messageId: stored.messageId };
+    this.deps.onMessage?.(stored);
     if (stored.isSelf && !this.selfTriggerAllowed(stored.userId)) return;
     if (this.sentIds.has(stored.messageId)) return;
     if (!this.groupAllowed(stored.groupId)) return;

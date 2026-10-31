@@ -111,8 +111,11 @@ LLBot 断线每 3 秒重连一次，所以桥和 LLBot 谁先启动都行。
 
 ## 媒体缓存
 
+- **收到即下载**（`media.eagerDownload`，默认开）：消息一入库就在后台预取附件，不等用户发命令——
+  QQ 的图片直链带 `rkey`，拖久了会 403；失败会自动重试一次。
+- 下载链：本地路径 → 直链 → `file://` → `get_image`/`get_file` 兜底，每一步失败都继续下一步，错误逐条打日志。
 - 目录：`media.dir`，默认 `~/.pi/agent/llbot-bridge/cache`；sha256 内容寻址，同内容复用。
-- `ttlHours` 过期删除（`0` = 不按时间过期），`maxTotalBytes` 超限按最旧删除，`maxFileBytes` 单文件上限。
+- `ttlHours` 过期删除（`0` = 不按时间过期），`maxTotalBytes` 超限按最旧删除，`maxFileBytes` 单文件上限（默认 50MB）。
 - `attachImages` 控制随消息附带几张图（0 = 只给路径）；模型不支持图片输入时会自动跳过附带，只留路径。
 
 ## 限制

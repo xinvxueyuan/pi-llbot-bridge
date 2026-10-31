@@ -37,6 +37,8 @@ export interface MediaConfig {
   enabled: boolean;
   /** 允许 pi 主动上传图片/文件到群里 */
   allowUpload: boolean;
+  /** 收到消息就预取附件（QQ 直链带 rkey 会过期，必须尽早下） */
+  eagerDownload: boolean;
   dir: string;
   downloadImages: boolean;
   downloadFiles: boolean;
@@ -83,10 +85,11 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   media: {
     enabled: true,
     allowUpload: true,
+    eagerDownload: true,
     dir: "",
     downloadImages: true,
     downloadFiles: true,
-    maxFileBytes: 20 * 1024 * 1024,
+    maxFileBytes: 50 * 1024 * 1024,
     ttlHours: 72,
     maxTotalBytes: 512 * 1024 * 1024,
     downloadTimeoutMs: 20_000,

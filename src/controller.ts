@@ -8,7 +8,8 @@ import { Bridge, type ContextBundle, type SettleOutcome } from "./bridge/bridge"
 import { collectWindow } from "./bridge/window";
 import { filterTranscript } from "./bridge/filter";
 import { MediaCache } from "./media/cache";
-import { fetchAttachment } from "./media/fetch";
+import { fetchAttachment, type FetchDeps } from "./media/fetch";
+import { MediaPrefetcher } from "./media/prefetch";
 import { fromApiMessage } from "./llbot/parse";
 import { expandForward } from "./llbot/forward";
 import type { Attachment, StoredMessage } from "./types";
@@ -167,18 +168,7 @@ export class BridgeController {
             if (attachment.kind === "forward") continue; // 合并转发走 expandForward，不下载
             if (attachment.kind === "image" && !config.media.downloadImages) continue;
             if (attachment.kind !== "image" && !config.media.downloadFiles) continue;
-            const fetched = await fetchAttachment(attachment, {
-              cache,
-              maxFileBytes: config.media.maxFileBytes,
-              timeoutMs: config.media.downloadTimeoutMs,
-              call: (action, params) => server.call(action, params),
-              download: async (url) => {
-                const response = await fetch(url, { signal: AbortSignal.timeout(config.media.downloadTimeoutMs) });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return Buffer.from(await response.arrayBuffer());
-              },
-              log: (text) => context.ui.notify(text, "warning"),
-            });
+            const fetched = await fetchAttachment(attachment, fetchDeps);
             updated.push(fetched);
             if (fetched.cachedPath !== attachment.cachedPath) changed = true;
             if (fetched.cachedPath) {
@@ -198,10 +188,40 @@ export class BridgeController {
       return { transcript, attachments };
     };
 
+    const download = async (url: string): Promise<Buffer> => {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(config.media.downloadTimeoutMs),
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) pi-llbot-bridge" },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return Buffer.from(await response.arrayBuffer());
+    };
+
+    const fetchDeps: FetchDeps = {
+      cache,
+      maxFileBytes: config.media.maxFileBytes,
+      timeoutMs: config.media.downloadTimeoutMs,
+      call: (action, params) => server.call(action, params),
+      download,
+      log: (text) => context.ui.notify(text, "warning"),
+    };
+
+    const prefetcher = new MediaPrefetcher({
+      fetch: (attachment) => fetchAttachment(attachment, fetchDeps),
+      save: (message, attachments) => store.insert({ ...message, attachments }),
+      concurrency: 3,
+      log: (text) => context.ui.notify(text, "warning"),
+      shouldFetch: (attachment) =>
+        attachment.kind === "image" ? config.media.downloadImages : config.media.downloadFiles,
+    });
+
     const bridge = new Bridge({
       config,
       store,
       client: server,
+      onMessage: (message) => {
+        if (config.media.enabled && config.media.eagerDownload) prefetcher.enqueue(message);
+      },
       isIdle: () => (this.lastContext ? this.lastContext.isIdle() : true),
       log: (message) => context.ui.notify(message, "warning"),
       collectContext,

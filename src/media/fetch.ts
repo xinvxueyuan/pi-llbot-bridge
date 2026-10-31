@@ -20,7 +20,7 @@ function extOf(name: string): string {
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("下载超时")), ms);
+    const timer = setTimeout(() => reject(new Error("超时")), ms);
     promise.then(
       (value) => {
         clearTimeout(timer);
@@ -34,43 +34,84 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-async function readSource(attachment: Attachment, deps: FetchDeps): Promise<Buffer | null> {
-  if (attachment.path && existsSync(attachment.path)) return readFileSync(attachment.path);
+interface SourceResult {
+  bytes: Buffer | null;
+  error: string;
+}
 
-  if (attachment.url && /^https?:/i.test(attachment.url)) {
-    if (!deps.download) return null;
-    return withTimeout(deps.download(attachment.url), deps.timeoutMs);
+/**
+ * 依次尝试：本地路径 → 直链 URL → file:// → 让 LLBot 自己下（get_image/get_file）。
+ * 任何一步失败都继续尝试下一步，最后把每步的错误拼起来返回。
+ */
+async function readSource(attachment: Attachment, deps: FetchDeps): Promise<SourceResult> {
+  const errors: string[] = [];
+
+  if (attachment.path && existsSync(attachment.path)) {
+    try {
+      return { bytes: readFileSync(attachment.path), error: "" };
+    } catch (error) {
+      errors.push(`local:${(error as Error).message}`);
+    }
+  }
+
+  if (attachment.url && /^https?:/i.test(attachment.url) && deps.download) {
+    try {
+      return { bytes: await withTimeout(deps.download(attachment.url), deps.timeoutMs), error: "" };
+    } catch (error) {
+      errors.push(`url:${(error as Error).message}`);
+    }
   }
 
   if (attachment.url && attachment.url.startsWith("file://")) {
-    const path = fileURLToPath(attachment.url);
-    if (existsSync(path)) return readFileSync(path);
+    try {
+      const path = fileURLToPath(attachment.url);
+      if (existsSync(path)) return { bytes: readFileSync(path), error: "" };
+      errors.push("file:// 路径不存在");
+    } catch (error) {
+      errors.push(`file://:${(error as Error).message}`);
+    }
   }
 
   const action = attachment.kind === "image" ? "get_image" : "get_file";
   const key = attachment.fileId ?? attachment.name;
-  const data = (await deps.call(action, { file: key, download: true })) as { file?: string; url?: string } | null;
-  if (data?.file && existsSync(data.file)) return readFileSync(data.file);
-  if (data?.url && /^https?:/i.test(data.url) && deps.download) {
-    return withTimeout(deps.download(data.url), deps.timeoutMs);
+  try {
+    const data = (await withTimeout(deps.call(action, { file: key, download: true }), deps.timeoutMs)) as
+      | { file?: string; url?: string }
+      | null;
+    if (data?.file && existsSync(data.file)) return { bytes: readFileSync(data.file), error: "" };
+    if (data?.url && /^https?:/i.test(data.url) && deps.download) {
+      try {
+        return { bytes: await withTimeout(deps.download(data.url), deps.timeoutMs), error: "" };
+      } catch (error) {
+        errors.push(`getfile-url:${(error as Error).message}`);
+      }
+    } else {
+      errors.push(`${action}: 没有可用文件`);
+    }
+  } catch (error) {
+    errors.push(`${action}:${(error as Error).message}`);
   }
-  return null;
+
+  return { bytes: null, error: errors.join(" | ") || "没有可用的下载线索" };
 }
 
 export async function fetchAttachment(attachment: Attachment, deps: FetchDeps): Promise<Attachment> {
   if (attachment.cachedPath && existsSync(attachment.cachedPath)) return attachment;
 
+  const { bytes, error } = await readSource(attachment, deps);
+  if (!bytes) {
+    deps.log?.(`附件下载失败(${attachment.kind} ${attachment.name})：${error}`);
+    return attachment;
+  }
+  if (bytes.length > deps.maxFileBytes) {
+    deps.log?.(`附件过大，跳过缓存(${attachment.name})：${bytes.length} > ${deps.maxFileBytes}`);
+    return attachment;
+  }
   try {
-    const bytes = await readSource(attachment, deps);
-    if (!bytes) return attachment;
-    if (bytes.length > deps.maxFileBytes) {
-      deps.log?.(`附件过大，跳过缓存：${attachment.name}`);
-      return attachment;
-    }
     const { path } = deps.cache.put(bytes, extOf(attachment.name));
     return { ...attachment, cachedPath: path, bytes: bytes.length };
-  } catch (error) {
-    deps.log?.(`附件下载失败(${attachment.name})：${(error as Error).message}`);
+  } catch (error2) {
+    deps.log?.(`附件写入缓存失败(${attachment.name})：${(error2 as Error).message}`);
     return attachment;
   }
 }
