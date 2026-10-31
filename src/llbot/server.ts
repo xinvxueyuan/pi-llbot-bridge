@@ -40,7 +40,27 @@ export class ReverseWsServer {
     return this.actualPort;
   }
 
-  listen(): Promise<number> {
+  listen(retries = 8, retryDelayMs = 300): Promise<number> {
+    return this.tryListen(retries, retryDelayMs);
+  }
+
+  private async tryListen(retries: number, retryDelayMs: number): Promise<number> {
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        return await this.listenOnce();
+      } catch (error) {
+        lastError = error as Error;
+        const busy = /EADDRINUSE/.test(lastError.message);
+        if (!busy || attempt === retries) break;
+        this.options.log?.(`端口 ${this.options.port} 仍被占用，${retryDelayMs}ms 后重试（${attempt + 1}/${retries}）`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+    throw lastError ?? new Error("监听失败");
+  }
+
+  private listenOnce(): Promise<number> {
     return new Promise((resolve, reject) => {
       const wss = new WebSocketServer({
         host: this.options.host,
@@ -57,8 +77,17 @@ export class ReverseWsServer {
         resolve(this.actualPort);
       });
       wss.on("error", (error) => {
-        if (this.actualPort === 0) reject(error);
-        else this.options.log?.(`WS 服务端错误：${error.message}`);
+        if (this.actualPort === 0) {
+          this.wss = null;
+          try {
+            wss.close();
+          } catch {
+            /* ignore */
+          }
+          reject(error);
+        } else {
+          this.options.log?.(`WS 服务端错误：${error.message}`);
+        }
       });
       wss.on("connection", (socket, request) => this.handleConnection(socket, request));
     });

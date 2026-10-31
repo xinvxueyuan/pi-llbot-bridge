@@ -30,6 +30,7 @@ export class BridgeController {
   private instance: Bridge | null = null;
   private lastContext: ExtensionContext | null = null;
   private outcome: SettleOutcome = { aborted: false };
+  private stopping: Promise<void> | null = null;
 
   constructor(private readonly pi: ExtensionAPI) {}
 
@@ -55,6 +56,8 @@ export class BridgeController {
   }
 
   async autoStart(context: ExtensionContext): Promise<void> {
+    // /new、/reload 会先 shutdown 再 start：等上一次关闭真正完成，否则 3001 还没释放
+    if (this.stopping) await this.stopping.catch(() => undefined);
     if (this.server) return;
     const config = loadConfig(getAgentDir());
     if (!config.autoStart) return;
@@ -266,7 +269,13 @@ export class BridgeController {
         });
     });
 
-    const port = await server.listen();
+    let port: number;
+    try {
+      port = await server.listen();
+    } catch (error) {
+      store.close();
+      throw error;
+    }
     cache.prune();
 
     this.server = server;
@@ -277,13 +286,31 @@ export class BridgeController {
     context.ui.notify(`已监听 ws://${config.server.host}:${port}${config.server.path}，等待 LLBot 连入…`, "info");
   }
 
-  stop(): void {
-    void this.server?.close();
-    this.store?.close();
+  async stop(): Promise<void> {
+    const server = this.server;
+    const store = this.store;
     this.server = null;
     this.store = null;
     this.cache = null;
     this.instance = null;
+    if (!server && !store) return;
+    this.stopping = (async () => {
+      try {
+        await server?.close();
+      } catch {
+        /* 已经关掉就算了 */
+      }
+      try {
+        store?.close();
+      } catch {
+        /* ignore */
+      }
+    })();
+    try {
+      await this.stopping;
+    } finally {
+      this.stopping = null;
+    }
   }
 
   recordRun(messages: AgentMessage[]): void {

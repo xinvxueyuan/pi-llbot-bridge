@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import { ReverseWsServer } from "../src/llbot/server";
@@ -78,6 +79,20 @@ describe("ReverseWsServer", () => {
   it("未连接时 call 立即 reject", async () => {
     const { server } = await start();
     await expect(server.call("get_login_info")).rejects.toThrow("未连接");
+  });
+
+  it("端口被占用时会重试，释放后能绑定（/new 场景）", async () => {
+    const blocker = createServer();
+    await new Promise<void>((resolve) => blocker.listen(0, "127.0.0.1", resolve));
+    const port = (blocker.address() as { port: number }).port;
+
+    const server = new ReverseWsServer({ host: "127.0.0.1", port, path: "/onebot/v11/ws", accessToken: "tok" });
+    servers.push(server);
+    const opening = server.listen(10, 100);
+
+    setTimeout(() => blocker.close(), 350);
+    await expect(opening).resolves.toBe(port);
+    await new Promise<void>((resolve) => blocker.close(() => resolve()));
   });
 
   it("新连接替换旧连接（旧 socket 被关闭）", async () => {

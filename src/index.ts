@@ -12,7 +12,7 @@ export default function llbotBridge(pi: ExtensionAPI) {
       controller.touch(ctx);
       const sub = (args ?? "").trim().toLowerCase();
       if (sub === "off") {
-        controller.stop();
+        await controller.stop();
         ctx.ui.setStatus("llbot", undefined);
         ctx.ui.notify("LLBot 桥已停止", "info");
         return;
@@ -58,5 +58,7 @@ export default function llbotBridge(pi: ExtensionAPI) {
     controller.touch(ctx);
     await controller.settle({ aborted: event.aborted });
   });
-  pi.on("session_shutdown", () => controller.stop());
+  pi.on("session_shutdown", async () => {
+    await controller.stop();
+  });
 }
